@@ -16,6 +16,23 @@
   .ctl label { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-top: 6px; }
   .ctl .val { font-family: monospace; width: 38px; text-align: right; color: #9be29b; }
   .ctl button { background: #2d7ef7; color: #fff; border: 0; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-top: 8px; width: 100%; }
+
+  /* legend */
+  .legend { background: rgba(20,22,26,.92); color: #eee; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.4); font-size: 12px; max-width: 260px; }
+  .legend .legend-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; cursor: pointer; user-select: none; }
+  .legend .legend-head b { color: #ffd23f; }
+  .legend .legend-head .chev { transition: transform .15s; color: #9be29b; }
+  .legend.collapsed .legend-head .chev { transform: rotate(-90deg); }
+  .legend .legend-body { padding: 0 12px 10px; max-height: 60vh; overflow-y: auto; }
+  .legend.collapsed .legend-body { display: none; }
+  .legend .legend-group { margin-top: 8px; font-size: 10.5px; letter-spacing: .4px; color: #8a8f98; text-transform: uppercase; }
+  .legend .legend-item { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .legend .sw { flex: 0 0 22px; height: 13px; border-radius: 2px; border: 1px solid rgba(255,255,255,.15); }
+  .legend .sw.outline { background: transparent; border: 2px solid #ed1c24; }
+  .legend .sw.hatch { background-image: repeating-linear-gradient(45deg, #bbb 0 2px, transparent 2px 5px); background-color: #2b2e33; }
+  .legend .sw.line { height: 0; border: 0; border-top: 3px solid #9e9e9e; border-radius: 0; }
+  .legend .sw.line.dashed { border-top: 3px dashed #d33; }
+  .legend .sw.line.water { border-top: 3px solid #1f7ae8; }
 </style>
 </head>
 <body>
@@ -75,6 +92,66 @@ document.getElementById("op").addEventListener("input", e => {
 document.getElementById("fit").addEventListener("click", () => map.fitBounds(OVERLAY_BOUNDS));
 
 L.control.scale({ imperial: false }).addTo(map);
+
+// legend
+const LEGEND = [
+  { group: "Жилые зоны", items: [
+    { c: "#fff27f", t: "Усадебная застройка (1–3 эт.)" },
+    { c: "#f4a98f", t: "Малоэтажная застройка (2–3 эт.)" },
+    { c: "#f5a623", t: "Среднеэтажная застройка (4–5 эт.)" },
+    { c: "#ec5fa0", t: "Многоэтажная застройка (6–12 эт.)" },
+    { c: "#b3122b", t: "Высотная застройка (12+ эт.)" },
+  ]},
+  { group: "Общественно-деловые зоны", items: [
+    { c: "#ed1c24", t: "Общественно-деловая застройка" },
+    { c: "#9b8fd6", t: "Многофункциональные центры" },
+  ]},
+  { group: "Производственные зоны", items: [
+    { c: "#8f86d6", t: "Промышленные зоны" },
+    { c: "#8fc7e8", t: "Коммунально-складские зоны" },
+  ]},
+  { group: "Рекреационные и природные зоны", items: [
+    { c: "#7ac143", t: "Парки, скверы, бульвары" },
+    { c: "#1f7a1f", t: "Леса, горные территории" },
+    { c: "#1f7ae8", t: "Озёра, водохранилища, реки" },
+  ]},
+  { group: "Специальные зоны", items: [
+    { c: "#9e9e9e", t: "Инженерная инфраструктура" },
+    { c: "#8b5a2b", t: "Транспортные узлы" },
+    { cls: "hatch", t: "Зоны перспективного развития" },
+  ]},
+  { group: "Границы и линии", items: [
+    { cls: "outline", t: "Граница города" },
+    { cls: "line", t: "Основные магистрали" },
+    { cls: "line dashed", t: "Железные дороги" },
+    { cls: "line water", t: "Реки и каналы" },
+  ]},
+];
+
+const Legend = L.Control.extend({
+  options: { position: "bottomright" },
+  onAdd: function () {
+    const d = L.DomUtil.create("div", "legend");
+    let body = "";
+    for (const g of LEGEND) {
+      body += `<div class="legend-group">${g.group}</div>`;
+      for (const it of g.items) {
+        const sw = it.cls
+          ? `<span class="sw ${it.cls}"></span>`
+          : `<span class="sw" style="background:${it.c}"></span>`;
+        body += `<div class="legend-item">${sw}<span>${it.t}</span></div>`;
+      }
+    }
+    d.innerHTML = `
+      <div class="legend-head"><b>Условные обозначения</b><span class="chev">▾</span></div>
+      <div class="legend-body">${body}</div>`;
+    L.DomEvent.disableClickPropagation(d);
+    L.DomEvent.disableScrollPropagation(d);
+    d.querySelector(".legend-head").addEventListener("click", () => d.classList.toggle("collapsed"));
+    return d;
+  }
+});
+map.addControl(new Legend());
 </script>
 </body>
 </html>
