@@ -1,0 +1,26 @@
+# --- Тяжёлые исходники и промежуточные артефакты (НЕ для GitHub) ---
+*.pdf
+genplan_full.jpg
+genplan_3857.tif
+genplan_gcp.vrt
+genplan_dz.dzi
+genplan_dz_files/
+
+# Превью/отладочные кропы
+preview.png
+grid_preview.png
+ne.png
+east.png
+airport.png
+rwy.png
+
+# Локальная кухня
+.venv/
+__pycache__/
+server.py
+picker.html
+gcps.json
+tiles_build.log
+
+# OS
+.DS_Store
