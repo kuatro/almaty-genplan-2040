@@ -5,6 +5,9 @@
 
 **Live:** https://kuatro.github.io/almaty-genplan-2040/
 
+## Связь с автором
+По всем вопросам обращайтесь в [мой Telegram](https://t.me/kbkuat)
+
 ## Что внутри репозитория
 
 | Файл / папка | Назначение |
@@ -30,6 +33,3 @@ python3 -m http.server 8000
 # открыть http://127.0.0.1:8000/
 ```
 
-## Хостинг на GitHub Pages
-
-Settings → Pages → Source: `Deploy from a branch` → ветка `main`, папка `/ (root)`.
