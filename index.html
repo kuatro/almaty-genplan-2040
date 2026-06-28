@@ -7,8 +7,10 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol@0.79.0/dist/L.Control.Locate.min.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.js"></script>
+<script src="https://unpkg.com/leaflet.locatecontrol@0.79.0/dist/L.Control.Locate.min.js"></script>
 <script data-goatcounter="https://kuatro.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 <style>
@@ -110,6 +112,20 @@ document.getElementById("op").addEventListener("input", e => {
   document.getElementById("opv").textContent = v + "%";
 });
 document.getElementById("fit").addEventListener("click", () => map.fitBounds(OVERLAY_BOUNDS));
+
+// Геолокация: «найти себя» на карте.
+L.control.locate({
+  position: "topleft",
+  flyTo: true,
+  keepCurrentZoomLevel: true,
+  showPopup: false,
+  drawCircle: true,
+  strings: {
+    title: "Показать моё местоположение",
+    popup: "Вы находитесь в пределах {distance} {unit} от этой точки",
+  },
+  locateOptions: { enableHighAccuracy: true, maxZoom: 16 },
+}).addTo(map);
 
 L.control.scale({ imperial: false }).addTo(map);
 
