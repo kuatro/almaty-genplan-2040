@@ -3,7 +3,30 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Генплан Алматы поверх карты</title>
+<title>Генплан Алматы 2040 — интерактивная карта зонирования поверх OSM/спутника</title>
+<meta name="description" content="Интерактивная карта генерального плана Алматы до 2040 года: функциональное зонирование (жилые, общественно-деловые, промышленные, рекреационные зоны), границы города, магистрали и ж/д, наложенные на OpenStreetMap и спутниковые снимки. Регулируемая прозрачность оверлея." />
+<meta name="keywords" content="генплан Алматы, генеральный план Алматы 2040, зонирование Алматы, функциональное зонирование, карта развития Алматы, градостроительство, Almaty masterplan, Almaty general plan, urban planning Almaty" />
+<meta name="author" content="kuat" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<link rel="canonical" href="https://kuatro.github.io/almaty-genplan-2040/" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="ru_RU" />
+<meta property="og:site_name" content="Генплан Алматы 2040" />
+<meta property="og:title" content="Генплан Алматы 2040 — интерактивная карта зонирования" />
+<meta property="og:description" content="Генеральный план Алматы до 2040 года поверх карты OpenStreetMap и спутника: функциональное зонирование, границы города, магистрали, регулируемая прозрачность." />
+<meta property="og:url" content="https://kuatro.github.io/almaty-genplan-2040/" />
+<meta property="og:image" content="https://kuatro.github.io/almaty-genplan-2040/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Генплан Алматы 2040 — интерактивная карта зонирования" />
+<meta name="twitter:description" content="Генеральный план Алматы до 2040 года поверх OSM и спутника: зонирование, границы, магистрали." />
+<meta name="twitter:image" content="https://kuatro.github.io/almaty-genplan-2040/og.png" />
+
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.css" />
@@ -40,9 +63,91 @@
   .legend .sw.line { height: 0; border: 0; border-top: 3px solid #9e9e9e; border-radius: 0; }
   .legend .sw.line.dashed { border-top: 3px dashed #d33; }
   .legend .sw.line.water { border-top: 3px solid #1f7ae8; }
+  /* SEO-контент: виден краулерам/LLM в DOM, но не мешает карте на экране */
+  #seo { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+  #noscript-fallback { position: absolute; inset: 0; z-index: 9999; overflow: auto; padding: 24px; background: #0b0d10; color: #eee; font-size: 15px; line-height: 1.6; }
+  #noscript-fallback a { color: #ffd23f; }
 </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://kuatro.github.io/almaty-genplan-2040/#website",
+      "url": "https://kuatro.github.io/almaty-genplan-2040/",
+      "name": "Генплан Алматы 2040",
+      "description": "Интерактивная карта генерального плана Алматы до 2040 года поверх OpenStreetMap и спутниковых снимков.",
+      "inLanguage": "ru"
+    },
+    {
+      "@type": "Dataset",
+      "name": "Генеральный план Алматы 2040 — функциональное зонирование",
+      "description": "Растровый генеральный план города Алматы, привязанный к реальным координатам (EPSG:3857, Web Mercator) и нарезанный на XYZ-тайлы. Показывает функциональное зонирование территории: жилые, общественно-деловые, производственные, рекреационные и специальные зоны, границы города, магистрали, железные дороги и водные объекты.",
+      "url": "https://kuatro.github.io/almaty-genplan-2040/",
+      "inLanguage": "ru",
+      "license": "https://www.openstreetmap.org/copyright",
+      "creator": { "@type": "Person", "name": "kuat", "url": "https://t.me/kbkuat" },
+      "spatialCoverage": {
+        "@type": "Place",
+        "name": "Алматы, Казахстан",
+        "geo": {
+          "@type": "GeoShape",
+          "box": "43.02597 76.64368 43.46200 77.20444"
+        }
+      },
+      "keywords": ["генплан Алматы", "генеральный план Алматы 2040", "зонирование", "градостроительство", "urban planning", "Almaty masterplan"]
+    }
+  ]
+}
+</script>
 </head>
 <body>
+<article id="seo">
+  <h1>Генплан Алматы 2040 — интерактивная карта функционального зонирования</h1>
+  <p>Это интерактивный веб-вьюер генерального плана города Алматы (Казахстан) с горизонтом планирования до 2040 года. Растровый генплан геопривязан к реальным координатам (проекция EPSG:3857, Web Mercator, среднеквадратичная невязка привязки около 18 метров) и наложен на карту OpenStreetMap и спутниковые снимки Esri World Imagery. Прозрачность оверлея регулируется ползунком.</p>
+  <p>Карта охватывает территорию города Алматы в границах примерно от 43.026° до 43.462° северной широты и от 76.644° до 77.204° восточной долготы.</p>
+  <h2>Что показывает генплан</h2>
+  <h3>Жилые зоны</h3>
+  <ul>
+    <li>Усадебная застройка (1–3 этажа)</li>
+    <li>Малоэтажная застройка (2–3 этажа)</li>
+    <li>Среднеэтажная застройка (4–5 этажей)</li>
+    <li>Многоэтажная застройка (6–12 этажей)</li>
+    <li>Высотная застройка (12+ этажей)</li>
+  </ul>
+  <h3>Общественно-деловые зоны</h3>
+  <ul>
+    <li>Общественно-деловая застройка</li>
+    <li>Многофункциональные центры</li>
+  </ul>
+  <h3>Производственные зоны</h3>
+  <ul>
+    <li>Промышленные зоны</li>
+    <li>Коммунально-складские зоны</li>
+  </ul>
+  <h3>Рекреационные и природные зоны</h3>
+  <ul>
+    <li>Парки, скверы, бульвары</li>
+    <li>Леса и горные территории</li>
+    <li>Озёра, водохранилища, реки</li>
+  </ul>
+  <h3>Специальные зоны, границы и линии</h3>
+  <ul>
+    <li>Инженерная инфраструктура и транспортные узлы</li>
+    <li>Зоны перспективного развития</li>
+    <li>Граница города, основные магистрали, железные дороги, реки и каналы</li>
+  </ul>
+  <h2>Связь с автором</h2>
+  <p>По вопросам о проекте — <a href="https://t.me/kbkuat">Telegram автора</a>.</p>
+</article>
+<noscript>
+  <div id="noscript-fallback">
+    <h1>Генплан Алматы 2040 — интерактивная карта зонирования</h1>
+    <p>Для просмотра интерактивной карты генерального плана Алматы включите JavaScript. Карта показывает функциональное зонирование города (жилые, общественно-деловые, производственные, рекреационные и специальные зоны) поверх OpenStreetMap и спутниковых снимков.</p>
+    <p>По вопросам: <a href="https://t.me/kbkuat">Telegram автора</a>.</p>
+  </div>
+</noscript>
 <div id="map"></div>
 <script>
 const OVERLAY_BOUNDS = [[43.02597, 76.64368], [43.46200, 77.20444]]; // [[S,W],[N,E]]
@@ -62,7 +167,7 @@ const genplan = L.tileLayer("tiles/{z}/{x}/{y}.png", {
   attribution: "Генплан Алматы"
 });
 
-const map = L.map("map", { center: [43.238, 76.945], zoom: 12, layers: [osm, genplan] });
+const map = L.map("map", { center: [43.238, 76.945], zoom: 12, layers: [osm, genplan], zoomControl: false });
 map.fitBounds(OVERLAY_BOUNDS);
 
 // Переключатель подложек (выбор карты) пока скрыт — оставлен в коде на будущее.
