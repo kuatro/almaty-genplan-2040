@@ -6,7 +6,9 @@
 <title>Генплан Алматы поверх карты</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.js"></script>
 <script data-goatcounter="https://kuatro.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 <style>
@@ -61,11 +63,26 @@ const genplan = L.tileLayer("tiles/{z}/{x}/{y}.png", {
 const map = L.map("map", { center: [43.238, 76.945], zoom: 12, layers: [osm, genplan] });
 map.fitBounds(OVERLAY_BOUNDS);
 
-L.control.layers(
-  { "OSM (улицы)": osm, "Спутник Esri": sat },
-  { "Подписи (спутник)": satLbl, "Генплан (оверлей)": genplan },
-  { collapsed: false, position: "topright" }
-).addTo(map);
+// Переключатель подложек (выбор карты) пока скрыт — оставлен в коде на будущее.
+// L.control.layers(
+//   { "OSM (улицы)": osm, "Спутник Esri": sat },
+//   { "Подписи (спутник)": satLbl, "Генплан (оверлей)": genplan },
+//   { collapsed: false, position: "topright" }
+// ).addTo(map);
+
+// Поиск по адресам/местам (Nominatim, без ключа), с приоритетом по границам генплана.
+L.Control.geocoder({
+  position: "topright",
+  placeholder: "Поиск адреса или места…",
+  defaultMarkGeocode: true,
+  geocoder: L.Control.Geocoder.nominatim({
+    geocodingQueryParams: {
+      viewbox: [OVERLAY_BOUNDS[0][1], OVERLAY_BOUNDS[0][0], OVERLAY_BOUNDS[1][1], OVERLAY_BOUNDS[1][0]].join(","),
+      bounded: 0,
+      countrycodes: "kz",
+    },
+  }),
+}).addTo(map);
 
 // opacity control
 const OpacityCtl = L.Control.extend({
@@ -134,7 +151,7 @@ const LEGEND = [
 const Legend = L.Control.extend({
   options: { position: "bottomright" },
   onAdd: function () {
-    const d = L.DomUtil.create("div", "legend");
+    const d = L.DomUtil.create("div", "legend collapsed");
     let body = "";
     for (const g of LEGEND) {
       body += `<div class="legend-group">${g.group}</div>`;
