@@ -47,6 +47,21 @@
   .ctl .val { font-family: monospace; width: 38px; text-align: right; color: #9be29b; }
   .ctl button { background: #2d7ef7; color: #fff; border: 0; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-top: 8px; width: 100%; }
 
+  /* поиск по кадастровому номеру */
+  .ctl .kad { margin-top: 10px; border-top: 1px solid rgba(255,255,255,.1); padding-top: 10px; }
+  .ctl .kad-label { font-size: 11px; color: #8a8f98; text-transform: uppercase; letter-spacing: .4px; }
+  .ctl .kad-row { display: flex; gap: 6px; margin-top: 6px; }
+  .ctl .kad-row input { flex: 1; min-width: 0; background: #2b2e33; color: #eee; border: 1px solid #3a3f47; border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+  .ctl .kad-row input::placeholder { color: #8a8f98; }
+  .ctl .kad-row input:focus { outline: none; border-color: #2d7ef7; }
+  .ctl .kad-row button { width: auto; margin-top: 0; padding: 6px 12px; white-space: nowrap; }
+  .ctl .kad-row button:disabled { opacity: .6; cursor: default; }
+  .ctl .kad-msg { font-size: 11px; margin-top: 6px; line-height: 1.4; }
+  .ctl .kad-msg a { color: #ffd23f; }
+  .ctl .kad-msg.err { color: #ff8a8a; }
+  .ctl .kad-msg.ok { color: #9be29b; }
+  .ctl .kad-msg.info { color: #8fc7e8; }
+
   /* legend */
   .legend { background: rgba(20,22,26,.92); color: #eee; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.4); font-size: 12px; max-width: 260px; }
   .legend .legend-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; cursor: pointer; user-select: none; }
@@ -203,7 +218,15 @@ const OpacityCtl = L.Control.extend({
         <input id="op" type="range" min="0" max="100" value="35">
         <span class="val" id="opv">35%</span>
       </div>
-      <button id="fit">К границам генплана</button>`;
+      <button id="fit">К границам генплана</button>
+      <div class="kad">
+        <div class="kad-label">Поиск по кадастровому номеру</div>
+        <div class="kad-row">
+          <input id="kadInput" type="text" placeholder="20-318-049-123" autocomplete="off" inputmode="numeric" spellcheck="false">
+          <button id="kadBtn" type="button">Найти</button>
+        </div>
+        <div id="kadMsg" class="kad-msg"></div>
+      </div>`;
     L.DomEvent.disableClickPropagation(d);
     L.DomEvent.disableScrollPropagation(d);
     return d;
@@ -217,6 +240,112 @@ document.getElementById("op").addEventListener("input", e => {
   document.getElementById("opv").textContent = v + "%";
 });
 document.getElementById("fit").addEventListener("click", () => map.fitBounds(OVERLAY_BOUNDS));
+
+// ── Поиск по кадастровому номеру ───────────────────────────────────────────
+// Кадастровый номер не содержит координат сам по себе — геометрию участка
+// отдаёт только публичная кадастровая карта РК (АИС ГЗК, aisgzk.kz, ArcGIS).
+// У неё нет CORS и операции query/find на публичном REST залочены, поэтому
+// из статического сайта напрямую отрисовать участок нельзя. Если поднять
+// серверный прокси (например Cloudflare Worker) к их сервису и указать его в
+// CADASTRE_PROXY ниже, участок будет подсвечиваться прямо на этой карте.
+// Без прокси номер копируется в буфер и открывается официальная карта.
+const CADASTRE_PROXY = ""; // напр. "https://your-worker.example.workers.dev/?url="
+const AISGZK_PUBLIC_MAP = "https://aisgzk.kz/aisgzk/ru/content/maps";
+const ZEM_SERVICE = "https://aisgzk.kz/arcgis/rest/services/aisgzkZem/MapServer";
+
+const kadInput = document.getElementById("kadInput");
+const kadBtn = document.getElementById("kadBtn");
+const kadMsg = document.getElementById("kadMsg");
+let parcelLayer = null;
+
+function setKadMsg(html, cls) {
+  kadMsg.className = "kad-msg" + (cls ? " " + cls : "");
+  kadMsg.innerHTML = html;
+}
+
+// Чистим разделители (':', '-', пробелы) → должно остаться 11–12 цифр.
+function normalizeCadastre(raw) {
+  const digits = (raw || "").replace(/[\s:.\u2012\u2013\u2014-]/g, "");
+  return /^\d{11,12}$/.test(digits) ? digits : null;
+}
+
+// Человекочитаемый вид: RR-DDD-BBB-NNNN.
+function prettyCadastre(d) {
+  return [d.slice(0, 2), d.slice(2, 5), d.slice(5, 8), d.slice(8)].join("-");
+}
+
+function proxied(url) {
+  return CADASTRE_PROXY ? CADASTRE_PROXY + encodeURIComponent(url) : url;
+}
+
+// Имя слоя участков в сервисе aisgzkZem: U_{область}_{кад. зона} = U_RR_DDD.
+async function findZemLayerIds(digits) {
+  const want = "U_" + digits.slice(0, 2) + "_" + digits.slice(2, 5);
+  const res = await fetch(proxied(ZEM_SERVICE + "?f=pjson"));
+  const data = await res.json();
+  return (data.layers || [])
+    .filter(l => l.name && l.name.indexOf(want) > -1)
+    .map(l => l.id);
+}
+
+// Возвращает geometry (rings, EPSG:4326) участка или null. Требует CADASTRE_PROXY.
+async function resolveCadastre(digits) {
+  if (!CADASTRE_PROXY) return null;
+  const layers = await findZemLayerIds(digits);
+  if (!layers.length) return null;
+  const url = ZEM_SERVICE + "/find?f=json&contains=false&returnGeometry=true&outSR=4326"
+    + "&searchFields=KAD_NOMER&layers=" + layers.join(",")
+    + "&searchText=" + encodeURIComponent(digits);
+  const res = await fetch(proxied(url));
+  const data = await res.json();
+  const hit = (data.results || []).find(r => r.geometry && r.geometry.rings);
+  return hit ? hit.geometry : null;
+}
+
+function drawParcel(geom) {
+  if (parcelLayer) { map.removeLayer(parcelLayer); parcelLayer = null; }
+  const latlngs = geom.rings.map(ring => ring.map(([x, y]) => [y, x]));
+  parcelLayer = L.polygon(latlngs, { color: "#ffd23f", weight: 3, fillColor: "#ffd23f", fillOpacity: 0.15 }).addTo(map);
+  map.fitBounds(parcelLayer.getBounds(), { maxZoom: 18 });
+}
+
+async function runCadastreSearch() {
+  const digits = normalizeCadastre(kadInput.value);
+  if (!digits) {
+    setKadMsg("Неверный формат. Ожидается 11–12 цифр, напр. <b>20-318-049-123</b>.", "err");
+    return;
+  }
+  kadBtn.disabled = true;
+  setKadMsg("Поиск…", "info");
+  let geom = null;
+  try { geom = await resolveCadastre(digits); } catch (e) { geom = null; }
+  kadBtn.disabled = false;
+
+  if (geom) {
+    drawParcel(geom);
+    setKadMsg("Участок " + prettyCadastre(digits) + " найден.", "ok");
+    return;
+  }
+
+  // Без прокси (или участок не отдался) — копируем номер и открываем офиц. карту.
+  const pretty = prettyCadastre(digits);
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(pretty);
+      copied = true;
+    }
+  } catch (e) { copied = false; }
+  window.open(AISGZK_PUBLIC_MAP, "_blank", "noopener");
+  setKadMsg(
+    (copied ? "Номер <b>" + pretty + "</b> скопирован. " : "Номер: <b>" + pretty + "</b>. ")
+    + 'Открыта <a href="' + AISGZK_PUBLIC_MAP + '" target="_blank" rel="noopener">кадастровая карта</a> — вставьте номер в её поиск.',
+    "info"
+  );
+}
+
+kadBtn.addEventListener("click", runCadastreSearch);
+kadInput.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); runCadastreSearch(); } });
 
 // Геолокация: «найти себя» на карте.
 L.control.locate({
