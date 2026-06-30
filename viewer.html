@@ -14,10 +14,51 @@
   #map { width: 100%; height: 100%; background: #0b0d10; }
   .ctl { background: rgba(20,22,26,.92); color: #eee; padding: 10px 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.4); font-size: 13px; min-width: 200px; }
   .ctl b { color: #ffd23f; }
-  .ctl .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-  .ctl input[type=range] { flex: 1; }
+  .ctl .row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  /* крупная "хватала": толстый трек + большой круглый палец */
+  .ctl input[type=range].fat {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 28px;
+    background: transparent;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .ctl input[type=range].fat::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 4px;
+    background: #3a3f47;
+  }
+  .ctl input[type=range].fat::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    margin-top: -10px;
+    border-radius: 50%;
+    background: #2d7ef7;
+    border: 3px solid #eef2f7;
+    box-shadow: 0 1px 4px rgba(0,0,0,.5);
+  }
+  .ctl input[type=range].fat::-moz-range-track {
+    height: 8px;
+    border-radius: 4px;
+    background: #3a3f47;
+  }
+  .ctl input[type=range].fat::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #2d7ef7;
+    border: 3px solid #eef2f7;
+    box-shadow: 0 1px 4px rgba(0,0,0,.5);
+  }
   .ctl label { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-top: 6px; }
   .ctl .val { font-family: monospace; width: 38px; text-align: right; color: #9be29b; }
+  .ctl .toggles { display: flex; gap: 6px; margin-top: 10px; }
+  .ctl .toggles button { flex: 1; margin-top: 0; background: #3a3f47; }
+  .ctl .toggles button.active { background: #2d7ef7; }
   .ctl button { background: #2d7ef7; color: #fff; border: 0; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-top: 8px; width: 100%; }
 
   /* legend */
@@ -76,10 +117,13 @@ const OpacityCtl = L.Control.extend({
       <b>Генплан Алматы</b>
       <div class="row">
         <span>Прозрачность</span>
-        <input id="op" type="range" min="0" max="100" value="35">
+        <input id="op" class="fat" type="range" min="0" max="100" value="35">
         <span class="val" id="opv">35%</span>
       </div>
-      <button id="fit">К границам генплана</button>`;
+      <div class="toggles">
+        <button id="onlyMap" type="button">Только карта</button>
+        <button id="onlyPlan" type="button">Только генплан</button>
+      </div>`;
     L.DomEvent.disableClickPropagation(d);
     L.DomEvent.disableScrollPropagation(d);
     return d;
@@ -87,12 +131,27 @@ const OpacityCtl = L.Control.extend({
 });
 map.addControl(new OpacityCtl());
 
-document.getElementById("op").addEventListener("input", e => {
-  const v = +e.target.value;
-  genplan.setOpacity(v / 100);
-  document.getElementById("opv").textContent = v + "%";
-});
-document.getElementById("fit").addEventListener("click", () => map.fitBounds(OVERLAY_BOUNDS));
+const opEl = document.getElementById("op");
+const opvEl = document.getElementById("opv");
+const btnMap = document.getElementById("onlyMap");
+const btnPlan = document.getElementById("onlyPlan");
+let peek = null; // null | "map" | "plan" — временный показ без сдвига ползунка
+
+function applyOpacity() {
+  const v = +opEl.value;
+  let eff = v;
+  if (peek === "map") eff = 0;
+  else if (peek === "plan") eff = 100;
+  genplan.setOpacity(eff / 100);
+  opvEl.textContent = v + "%";
+  btnMap.classList.toggle("active", peek === "map");
+  btnPlan.classList.toggle("active", peek === "plan");
+}
+
+opEl.addEventListener("input", () => { peek = null; applyOpacity(); });
+btnMap.addEventListener("click", () => { peek = peek === "map" ? null : "map"; applyOpacity(); });
+btnPlan.addEventListener("click", () => { peek = peek === "plan" ? null : "plan"; applyOpacity(); });
+applyOpacity();
 
 L.control.scale({ imperial: false }).addTo(map);
 
