@@ -86,6 +86,11 @@
   .ctl .toggles { display: flex; gap: 6px; margin-top: 10px; }
   .ctl .toggles button { flex: 1; margin-top: 0; background: #3a3f47; }
   .ctl .toggles button.active { background: #2d7ef7; }
+  .ctl .variants { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .ctl .variants button { margin-top: 0; background: #3a3f47; text-align: left; line-height: 1.25; }
+  .ctl .variants button.active { background: #2d7ef7; }
+  .ctl .variants button small { display: block; color: rgba(255,255,255,.75); font-size: 10.5px; font-weight: 400; }
+  .ctl .hint { margin-top: 6px; color: #8a8f98; font-size: 11px; line-height: 1.35; }
   .ctl button { background: #2d7ef7; color: #fff; border: 0; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-top: 8px; width: 100%; }
 
   /* legend */
@@ -202,19 +207,27 @@ const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Wo
 });
 const satLbl = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 20 });
 
-const genplan = L.tileLayer("tiles/{z}/{x}/{y}.png", {
+const PLAN_OPTS = {
   minZoom: 0, maxZoom: 20, maxNativeZoom: MAX_NATIVE,
   bounds: OVERLAY_BOUNDS, opacity: 0.35, tms: false,
-  attribution: "Генплан Алматы"
-});
+};
+const plans = {
+  corr: L.tileLayer("tiles/{z}/{x}/{y}.png", {
+    ...PLAN_OPTS, attribution: "Корректировка генплана Алматы",
+  }),
+  adopted: L.tileLayer("tiles_adopted/{z}/{x}/{y}.png", {
+    ...PLAN_OPTS, attribution: "Принятый генплан Алматы, постановление от 31 октября",
+  }),
+};
+let activeKey = "adopted";
 
-const map = L.map("map", { center: [43.238, 76.945], zoom: 12, layers: [osm, genplan], zoomControl: false });
+const map = L.map("map", { center: [43.238, 76.945], zoom: 12, layers: [osm, plans[activeKey]], zoomControl: false });
 map.fitBounds(OVERLAY_BOUNDS);
 
 // Переключатель подложек (выбор карты) пока скрыт — оставлен в коде на будущее.
 // L.control.layers(
 //   { "OSM (улицы)": osm, "Спутник Esri": sat },
-//   { "Подписи (спутник)": satLbl, "Генплан (оверлей)": genplan },
+//   { "Подписи (спутник)": satLbl, "Генплан (оверлей)": plans.adopted },
 //   { collapsed: false, position: "topright" }
 // ).addTo(map);
 
@@ -239,6 +252,10 @@ const OpacityCtl = L.Control.extend({
     const d = L.DomUtil.create("div", "ctl");
     d.innerHTML = `
       <b>Генплан Алматы</b>
+      <div class="variants">
+        <button id="varCorr" type="button">Корректировка<small>план корректировок</small></button>
+        <button id="varAdopted" type="button" class="active">Принятый<small>постановление от 31 октября</small></button>
+      </div>
       <div class="row">
         <span>Прозрачность</span>
         <input id="op" class="fat" type="range" min="0" max="100" value="35">
@@ -266,7 +283,7 @@ function applyOpacity() {
   let eff = v;
   if (peek === "map") eff = 0;
   else if (peek === "plan") eff = 100;
-  genplan.setOpacity(eff / 100);
+  plans[activeKey].setOpacity(eff / 100);
   opvEl.textContent = v + "%";
   btnMap.classList.toggle("active", peek === "map");
   btnPlan.classList.toggle("active", peek === "plan");
@@ -275,6 +292,18 @@ function applyOpacity() {
 opEl.addEventListener("input", () => { peek = null; applyOpacity(); });
 btnMap.addEventListener("click", () => { peek = peek === "map" ? null : "map"; applyOpacity(); });
 btnPlan.addEventListener("click", () => { peek = peek === "plan" ? null : "plan"; applyOpacity(); });
+
+const varBtns = { corr: document.getElementById("varCorr"), adopted: document.getElementById("varAdopted") };
+function setPlan(key) {
+  if (key === activeKey) return;
+  map.removeLayer(plans[activeKey]);
+  activeKey = key;
+  plans[key].addTo(map);
+  applyOpacity();
+  for (const [k, btn] of Object.entries(varBtns)) btn.classList.toggle("active", k === key);
+}
+varBtns.corr.addEventListener("click", () => setPlan("corr"));
+varBtns.adopted.addEventListener("click", () => setPlan("adopted"));
 applyOpacity();
 
 // Геолокация: «найти себя» на карте.
